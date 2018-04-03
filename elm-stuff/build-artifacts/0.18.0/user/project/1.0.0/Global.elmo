@@ -1,0 +1,6 @@
+var _user$project$Global$init = {
+	user: {ctor: '_Tuple0'}
+};
+var _user$project$Global$Global = function (a) {
+	return {user: a};
+};

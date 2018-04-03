@@ -1,0 +1,132 @@
+var _user$project$Main$updatePage = F3(
+	function (toPage, toMsg, _p0) {
+		var _p1 = _p0;
+		return {
+			ctor: '_Tuple2',
+			_0: {
+				global: _p1._0,
+				page: toPage(_p1._1)
+			},
+			_1: A2(_elm_lang$core$Platform_Cmd$map, toMsg, _p1._2)
+		};
+	});
+var _user$project$Main$Model = F2(
+	function (a, b) {
+		return {global: a, page: b};
+	});
+var _user$project$Main$NotFound = {ctor: 'NotFound'};
+var _user$project$Main$Profile = function (a) {
+	return {ctor: 'Profile', _0: a};
+};
+var _user$project$Main$Home = function (a) {
+	return {ctor: 'Home', _0: a};
+};
+var _user$project$Main$ProfileMsg = function (a) {
+	return {ctor: 'ProfileMsg', _0: a};
+};
+var _user$project$Main$HomeMsg = function (a) {
+	return {ctor: 'HomeMsg', _0: a};
+};
+var _user$project$Main$init = F2(
+	function (global, location) {
+		var toPromise = F4(
+			function (page, msg, init_, _p2) {
+				var _p3 = _p2;
+				return A3(
+					_user$project$Main$updatePage,
+					page,
+					msg,
+					init_(global));
+			});
+		var parser = _evancz$url_parser$UrlParser$oneOf(
+			{
+				ctor: '::',
+				_0: A2(
+					_evancz$url_parser$UrlParser$map,
+					A3(toPromise, _user$project$Main$Home, _user$project$Main$HomeMsg, _user$project$Page_Home$init),
+					_evancz$url_parser$UrlParser$top),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_evancz$url_parser$UrlParser$map,
+						A3(toPromise, _user$project$Main$Profile, _user$project$Main$ProfileMsg, _user$project$Page_Profile$init),
+						_evancz$url_parser$UrlParser$s('profile')),
+					_1: {ctor: '[]'}
+				}
+			});
+		var _p4 = A2(_evancz$url_parser$UrlParser$parsePath, parser, location);
+		if (_p4.ctor === 'Just') {
+			return _p4._0(
+				{ctor: '_Tuple0'});
+		} else {
+			return {
+				ctor: '_Tuple2',
+				_0: {global: _user$project$Global$init, page: _user$project$Main$NotFound},
+				_1: _elm_lang$core$Platform_Cmd$none
+			};
+		}
+	});
+var _user$project$Main$update = F2(
+	function (msg, model) {
+		var _p5 = {ctor: '_Tuple2', _0: model.page, _1: msg};
+		_v3_3:
+		do {
+			switch (_p5._1.ctor) {
+				case 'ChangeUrl':
+					return A2(
+						_user$project$Main$init,
+						_elm_lang$core$Maybe$Just(model.global),
+						_p5._1._0);
+				case 'HomeMsg':
+					if (_p5._0.ctor === 'Home') {
+						return A3(
+							_user$project$Main$updatePage,
+							_user$project$Main$Home,
+							_user$project$Main$HomeMsg,
+							A3(_user$project$Page_Home$update, _p5._1._0, model.global, _p5._0._0));
+					} else {
+						break _v3_3;
+					}
+				default:
+					if (_p5._0.ctor === 'Profile') {
+						return A3(
+							_user$project$Main$updatePage,
+							_user$project$Main$Profile,
+							_user$project$Main$ProfileMsg,
+							A3(_user$project$Page_Profile$update, _p5._1._0, model.global, _p5._0._0));
+					} else {
+						break _v3_3;
+					}
+			}
+		} while(false);
+		return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+	});
+var _user$project$Main$view = function (model) {
+	var _p6 = model.page;
+	switch (_p6.ctor) {
+		case 'Home':
+			return A2(
+				_elm_lang$html$Html$map,
+				_user$project$Main$HomeMsg,
+				A2(_user$project$Page_Home$view, model.global, _p6._0));
+		case 'Profile':
+			return A2(
+				_elm_lang$html$Html$map,
+				_user$project$Main$ProfileMsg,
+				A2(_user$project$Page_Profile$view, model.global, _p6._0));
+		default:
+			return _elm_lang$html$Html$text('not found');
+	}
+};
+var _user$project$Main$ChangeUrl = function (a) {
+	return {ctor: 'ChangeUrl', _0: a};
+};
+var _user$project$Main$main = A2(
+	_elm_lang$navigation$Navigation$program,
+	_user$project$Main$ChangeUrl,
+	{
+		init: _user$project$Main$init(_elm_lang$core$Maybe$Nothing),
+		update: _user$project$Main$update,
+		view: _user$project$Main$view,
+		subscriptions: _elm_lang$core$Basics$always(_elm_lang$core$Platform_Sub$none)
+	})();

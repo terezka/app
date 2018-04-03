@@ -1,0 +1,104 @@
+[
+  {
+    "name": "UrlParser",
+    "comment": "\n\n# Primitives\n@docs Parser, string, int, s\n\n# Path Parses\n@docs (</>), map, oneOf, top, custom\n\n# Query Parameter Parsers\n@docs QueryParser, (<?>), stringParam, intParam, customParam\n\n# Run a Parser\n@docs parsePath, parseHash\n\n",
+    "aliases": [],
+    "types": [
+      {
+        "name": "Parser",
+        "comment": " Turn URLs like `/blog/42/cat-herding-techniques` into nice Elm data.\n",
+        "args": [
+          "a",
+          "b"
+        ],
+        "cases": []
+      },
+      {
+        "name": "QueryParser",
+        "comment": " Turn query parameters like `?name=tom&age=42` into nice Elm data.\n",
+        "args": [
+          "a",
+          "b"
+        ],
+        "cases": []
+      }
+    ],
+    "values": [
+      {
+        "name": "</>",
+        "comment": " Parse a path with multiple segments.\n\n    parsePath (s \"blog\" </> int) location\n    -- /blog/35/  ==>  Just 35\n    -- /blog/42   ==>  Just 42\n    -- /blog/     ==>  Nothing\n    -- /42/       ==>  Nothing\n\n    parsePath (s \"search\" </> string) location\n    -- /search/cats/  ==>  Just \"cats\"\n    -- /search/frog   ==>  Just \"frog\"\n    -- /search/       ==>  Nothing\n    -- /cats/         ==>  Nothing\n",
+        "type": "UrlParser.Parser a b -> UrlParser.Parser b c -> UrlParser.Parser a c",
+        "associativity": "right",
+        "precedence": 7
+      },
+      {
+        "name": "<?>",
+        "comment": " Parse some query parameters.\n\n    type Route = BlogList (Maybe String) | BlogPost Int\n\n    route : Parser (Route -> a) a\n    route =\n      oneOf\n        [ map BlogList (s \"blog\" <?> stringParam \"search\")\n        , map BlogPost (s \"blog\" </> int)\n        ]\n\n    parsePath route location\n    -- /blog/              ==>  Just (BlogList Nothing)\n    -- /blog/?search=cats  ==>  Just (BlogList (Just \"cats\"))\n    -- /blog/42            ==>  Just (BlogPost 42)\n",
+        "type": "UrlParser.Parser a b -> UrlParser.QueryParser b c -> UrlParser.Parser a c",
+        "associativity": "left",
+        "precedence": 8
+      },
+      {
+        "name": "custom",
+        "comment": " Create a custom path segment parser. Here is how it is used to define the\n`int` and `string` parsers:\n\n    int =\n      custom \"NUMBER\" String.toInt\n\n    string =\n      custom \"STRING\" Ok\n\nYou can use it to define something like “only CSS files” like this:\n\n    css : Parser (String -> a) a\n    css =\n      custom \"CSS_FILE\" <| \\segment ->\n        if String.endsWith \".css\" then\n          Ok segment\n        else\n          Err \"Does not end with .css\"\n",
+        "type": "String -> (String -> Result.Result String a) -> UrlParser.Parser (a -> b) b"
+      },
+      {
+        "name": "customParam",
+        "comment": " Create a custom query parser. You could create parsers like these:\n\n    jsonParam : String -> Decoder a -> QueryParser (Maybe a -> b) b\n    enumParam : String -> Dict String a -> QueryParser (Maybe a -> b) b\n\nIt may be worthwhile to have these in this library directly. If you need\neither one in practice, please open an issue [here][] describing your exact\nscenario. We can use that data to decide if they should be added.\n\n[here]: https://github.com/evancz/url-parser/issues\n",
+        "type": "String -> (Maybe.Maybe String -> a) -> UrlParser.QueryParser (a -> b) b"
+      },
+      {
+        "name": "int",
+        "comment": " Parse a segment of the path as an `Int`.\n\n    parsePath int location\n    -- /alice/  ==>  Nothing\n    -- /bob     ==>  Nothing\n    -- /42/     ==>  Just 42\n",
+        "type": "UrlParser.Parser (Int -> a) a"
+      },
+      {
+        "name": "intParam",
+        "comment": " Parse a query parameter as an `Int`. Maybe you want to show paginated\nsearch results. You could have a `start` query parameter to say which result\nshould appear first.\n\n    parsePath (s \"results\" <?> intParam \"start\") location\n    -- /results           ==>  Just Nothing\n    -- /results?start=10  ==>  Just (Just 10)\n",
+        "type": "String -> UrlParser.QueryParser (Maybe.Maybe Int -> a) a"
+      },
+      {
+        "name": "map",
+        "comment": " Transform a path parser.\n\n    type alias Comment = { author : String, id : Int }\n\n    rawComment : Parser (String -> Int -> a) a\n    rawComment =\n      s \"user\" </> string </> s \"comments\" </> int\n\n    comment : Parser (Comment -> a) a\n    comment =\n      map Comment rawComment\n\n    parsePath comment location\n    -- /user/bob/comments/42  ==>  Just { author = \"bob\", id = 42 }\n    -- /user/tom/comments/35  ==>  Just { author = \"tom\", id = 35 }\n    -- /user/sam/             ==>  Nothing\n",
+        "type": "a -> UrlParser.Parser a b -> UrlParser.Parser (b -> c) c"
+      },
+      {
+        "name": "oneOf",
+        "comment": " Try a bunch of different path parsers.\n\n    type Route\n      = Search String\n      | Blog Int\n      | User String\n      | Comment String Int\n\n    route : Parser (Route -> a) a\n    route =\n      oneOf\n        [ map Search  (s \"search\" </> string)\n        , map Blog    (s \"blog\" </> int)\n        , map User    (s \"user\" </> string)\n        , map Comment (s \"user\" </> string </> \"comments\" </> int)\n        ]\n\n    parsePath route location\n    -- /search/cats           ==>  Just (Search \"cats\")\n    -- /search/               ==>  Nothing\n\n    -- /blog/42               ==>  Just (Blog 42)\n    -- /blog/cats             ==>  Nothing\n\n    -- /user/sam/             ==>  Just (User \"sam\")\n    -- /user/bob/comments/42  ==>  Just (Comment \"bob\" 42)\n    -- /user/tom/comments/35  ==>  Just (Comment \"tom\" 35)\n    -- /user/                 ==>  Nothing\n\n",
+        "type": "List (UrlParser.Parser a b) -> UrlParser.Parser a b"
+      },
+      {
+        "name": "parseHash",
+        "comment": " Parse based on `location.hash` and `location.search`. This parser\nignores the normal path entirely.\n",
+        "type": "UrlParser.Parser (a -> a) a -> Navigation.Location -> Maybe.Maybe a"
+      },
+      {
+        "name": "parsePath",
+        "comment": " Parse based on `location.pathname` and `location.search`. This parser\nignores the hash entirely.\n",
+        "type": "UrlParser.Parser (a -> a) a -> Navigation.Location -> Maybe.Maybe a"
+      },
+      {
+        "name": "s",
+        "comment": " Parse a segment of the path if it matches a given string.\n\n    s \"blog\"  -- can parse /blog/\n              -- but not /glob/ or /42/ or anything else\n",
+        "type": "String -> UrlParser.Parser a a"
+      },
+      {
+        "name": "string",
+        "comment": " Parse a segment of the path as a `String`.\n\n    parsePath string location\n    -- /alice/  ==>  Just \"alice\"\n    -- /bob     ==>  Just \"bob\"\n    -- /42/     ==>  Just \"42\"\n",
+        "type": "UrlParser.Parser (String -> a) a"
+      },
+      {
+        "name": "stringParam",
+        "comment": " Parse a query parameter as a `String`.\n\n    parsePath (s \"blog\" <?> stringParam \"search\") location\n    -- /blog/              ==>  Just (Overview Nothing)\n    -- /blog/?search=cats  ==>  Just (Overview (Just \"cats\"))\n",
+        "type": "String -> UrlParser.QueryParser (Maybe.Maybe String -> a) a"
+      },
+      {
+        "name": "top",
+        "comment": " A parser that does not consume any path segments.\n\n    type BlogRoute = Overview | Post Int\n\n    blogRoute : Parser (BlogRoute -> a) a\n    blogRoute =\n      oneOf\n        [ map Overview top\n        , map Post  (s \"post\" </> int)\n        ]\n\n    parsePath (s \"blog\" </> blogRoute) location\n    -- /blog/         ==>  Just Overview\n    -- /blog/post/42  ==>  Just (Post 42)\n",
+        "type": "UrlParser.Parser a a"
+      }
+    ],
+    "generated-with-elm-version": "0.18.0"
+  }
+]

@@ -1,0 +1,65 @@
+var _user$project$Page_Home$update = F3(
+	function (msg, global, model) {
+		var _p0 = msg;
+		return {
+			ctor: '_Tuple3',
+			_0: global,
+			_1: model,
+			_2: _elm_lang$navigation$Navigation$newUrl(_p0._0)
+		};
+	});
+var _user$project$Page_Home$init = function (global) {
+	var _p1 = global;
+	if (_p1.ctor === 'Just') {
+		return {
+			ctor: '_Tuple3',
+			_0: _p1._0,
+			_1: {
+				books: {ctor: '[]'}
+			},
+			_2: _elm_lang$core$Platform_Cmd$none
+		};
+	} else {
+		return {
+			ctor: '_Tuple3',
+			_0: _user$project$Global$init,
+			_1: {
+				books: {ctor: '[]'}
+			},
+			_2: _elm_lang$core$Platform_Cmd$none
+		};
+	}
+};
+var _user$project$Page_Home$Model = function (a) {
+	return {books: a};
+};
+var _user$project$Page_Home$ChangeUrl = function (a) {
+	return {ctor: 'ChangeUrl', _0: a};
+};
+var _user$project$Page_Home$view = F2(
+	function (global, model) {
+		return A2(
+			_elm_lang$html$Html$div,
+			{ctor: '[]'},
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html$text('HOME'),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$button,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Events$onClick(
+								_user$project$Page_Home$ChangeUrl('/profile')),
+							_1: {ctor: '[]'}
+						},
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html$text('to profile'),
+							_1: {ctor: '[]'}
+						}),
+					_1: {ctor: '[]'}
+				}
+			});
+	});
