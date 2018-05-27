@@ -17,13 +17,13 @@ import Spa
 {-| -}
 page : Spa.Page { app | home : Maybe Model } () Model Msg
 page =
-    { get = .home
-    , set = \home app -> { app | home = Just home }
-    , init = init
-    , update = update
-    , view = view
-    , subscriptions = always Sub.none
-    }
+  { get = .home
+  , set = \home app -> { app | home = Just home }
+  , init = init
+  , update = update
+  , view = view
+  , subscriptions = always Sub.none
+  }
 
 
 
@@ -32,8 +32,8 @@ page =
 
 {-| -}
 type alias Model =
-    { posts : Status.Status Http.Error (List Post.Post)
-    }
+  { posts : Status.Status Http.Error (List Post.Post)
+  }
 
 
 
@@ -42,14 +42,14 @@ type alias Model =
 
 init : Maybe Model -> () -> ( Model, Cmd Msg )
 init cached _ =
-    case cached of
-        Just model ->
-            ( model, Cmd.none )
+  case cached of
+    Just model ->
+      ( model, Cmd.none )
 
-        Nothing ->
-            ( { posts = Status.loading }
-            , Http.send ReceivePosts Post.request
-            )
+    Nothing ->
+      ( { posts = Status.loading }
+      , Http.send ReceivePosts Post.request
+      )
 
 
 
@@ -57,21 +57,21 @@ init cached _ =
 
 
 type Msg
-    = SetLocation Route.Route
-    | ReceivePosts (Result Http.Error (List Post.Post))
+  = SetLocation Route.Route
+  | ReceivePosts (Result Http.Error (List Post.Post))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        SetLocation route ->
-            ( model, Route.navigate route )
+  case msg of
+    SetLocation route ->
+      ( model, Route.navigate route )
 
-        ReceivePosts (Ok posts) ->
-            ( { model | posts = Status.success posts }, Cmd.none )
+    ReceivePosts (Ok posts) ->
+      ( { model | posts = Status.success posts }, Cmd.none )
 
-        ReceivePosts (Err err) ->
-            ( { model | posts = Status.failure err }, Cmd.none )
+    ReceivePosts (Err err) ->
+      ( { model | posts = Status.failure err }, Cmd.none )
 
 
 
@@ -80,27 +80,27 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.div []
-        [ Html.text "HOME for real"
-        , Route.button SetLocation (Route.Profile 1 Route.Submissions) [] [ Html.text "to profile 1" ]
-        , Route.button SetLocation (Route.Profile 2 Route.Progress) [] [ Html.text "to profile 2" ]
-        , viewPosts model.posts
-        ]
+  Html.div []
+    [ Html.text "HOME for real"
+    , Route.button SetLocation (Route.Profile 1 Route.Submissions) [] [ Html.text "to profile 1" ]
+    , Route.button SetLocation (Route.Profile 2 Route.Progress) [] [ Html.text "to profile 2" ]
+    , viewPosts model.posts
+    ]
 
 
 viewPosts : Status.Status Http.Error (List Post.Post) -> Html.Html msg
 viewPosts posts =
-    case posts of
-        Status.Loading _ ->
-            Html.text "Loading..."
+  case posts of
+    Status.Loading _ ->
+      Html.text "Loading..."
 
-        Status.Finished (Status.Success posts) ->
-            Html.div [] (List.map viewPost posts)
+    Status.Finished (Status.Success posts) ->
+      Html.div [] (List.map viewPost posts)
 
-        Status.Finished _ ->
-            Html.text "Could not load posts!"
+    Status.Finished _ ->
+      Html.text "Could not load posts!"
 
 
 viewPost : Post.Post -> Html.Html msg
 viewPost post =
-    Html.div [] [ Html.text post.title ]
+  Html.div [] [ Html.text post.title ]

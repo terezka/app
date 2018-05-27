@@ -13,13 +13,13 @@ import Spa
 {-| -}
 page : Spa.Page { app | notFound : Maybe Model } Navigation.Location Model Msg
 page =
-    { get = .notFound
-    , set = \notFound app -> { app | notFound = Just notFound }
-    , init = init
-    , update = update
-    , view = view
-    , subscriptions = always Sub.none
-    }
+  { get = .notFound
+  , set = \notFound app -> { app | notFound = Just notFound }
+  , init = init
+  , update = update
+  , view = view
+  , subscriptions = always Sub.none
+  }
 
 
 
@@ -28,7 +28,7 @@ page =
 
 {-| -}
 type alias Model =
-    ()
+  ()
 
 
 
@@ -37,9 +37,9 @@ type alias Model =
 
 init : Maybe Model -> Navigation.Location -> ( Model, Cmd Msg )
 init _ _ =
-    ( ()
-    , Cmd.none
-    )
+  ( ()
+  , Cmd.none
+  )
 
 
 
@@ -47,14 +47,14 @@ init _ _ =
 
 
 type Msg
-    = SetLocation Route.Route
+  = SetLocation Route.Route
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        SetLocation route ->
-            ( model, Route.navigate route )
+  case msg of
+    SetLocation route ->
+      ( model, Route.navigate route )
 
 
 
@@ -63,7 +63,7 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view _ =
-    Html.div []
-        [ Html.text "NOT FOUND"
-        , Route.link SetLocation Route.Home [] [ Html.text "to home" ]
-        ]
+  Html.div []
+    [ Html.text "NOT FOUND"
+    , Route.link SetLocation Route.Home [] [ Html.text "to home" ]
+    ]
