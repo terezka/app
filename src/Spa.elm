@@ -30,9 +30,9 @@ type alias Program app =
 
 {-| -}
 type alias Config app =
-  { pages : List (Route app)
+  { init : app
+  , pages : List (Route app)
   , default : Default app
-  , init : app
   }
 
 
@@ -136,7 +136,7 @@ init : Config app -> app -> Navigation.Location -> ( Model app, Cmd (Msg app) )
 init config app location =
   let
       page =
-          find config.default config.pages location
+          findPage config.default config.pages location
   in
   Tuple.mapFirst (Model page) (page.init app)
 
@@ -189,8 +189,8 @@ type alias InternalPage app =
   }
 
 
-find : Default app -> List (Route app) -> Navigation.Location -> InternalPage app
-find (Default default) pages location =
+findPage : Default app -> List (Route app) -> Navigation.Location -> InternalPage app
+findPage (Default default) pages location =
   let
     fold (Route route) final =
       case final of
