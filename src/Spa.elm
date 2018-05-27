@@ -20,68 +20,102 @@ import Navigation
 import UrlParser as Parser
 
 
+-- API / PROGRAM
+
+
 {-| -}
 type alias Program app =
-    Platform.Program Never (Model app) (Msg app)
+  Platform.Program Never (Model app) (Msg app)
 
 
 {-| -}
 type alias Config app =
-    { pages : List (Route app)
-    , default : Default app
-    , init : app
-    }
+  { pages : List (Route app)
+  , default : Default app
+  , init : app
+  }
 
 
 {-| -}
-program : Config model -> Program model
+program : Config app -> Program app
 program config =
-    Navigation.program ReceiveLocation
-        { init = init config config.init
-        , update = update config
-        , view = view config
-        , subscriptions = subscriptions config
-        }
+  Navigation.program ReceiveLocation
+    { init = init config config.init
+    , update = update config
+    , view = view config
+    , subscriptions = subscriptions config
+    }
+
+
+
+-- API / PAGE CONFIG
 
 
 {-| -}
 type alias Page app args model msg =
-    { get : app -> Maybe model
-    , set : model -> app -> app
-    , init : Maybe model -> args -> ( model, Cmd msg )
-    , update : msg -> model -> ( model, Cmd msg )
-    , view : model -> Html.Html msg
-    , subscriptions : model -> Sub msg
-    }
+  { get : app -> Maybe model
+  , set : model -> app -> app
+  , init : Maybe model -> args -> ( model, Cmd msg )
+  , update : msg -> model -> ( model, Cmd msg )
+  , view : model -> Html.Html msg
+  , subscriptions : model -> Sub msg
+  }
+
+
+
+-- API / ROUTE
 
 
 {-| -}
 type Route app
-    = Route (app -> Navigation.Location -> Maybe (PageProgram app))
+  = Route (Navigation.Location -> Maybe (InternalPage app))
 
 
 {-| -}
 route : Page app args model msg -> List (Parser.Parser (args -> args) args) -> Route app
 route config routes =
-    Route <|
-        \app location ->
-            case Parser.parsePath (Parser.oneOf routes) location of
-                Just args ->
-                    Just (toPageProgram config app args)
+  Route <| \location ->
+    Parser.parsePath (Parser.oneOf routes) location
+      |> Maybe.map (internalPage config)
 
-                Nothing ->
-                    Nothing
+
+
+-- API / DEFAULT PAGE
 
 
 {-| -}
 type Default app
-    = Default (app -> Navigation.Location -> PageProgram app)
+  = Default (Navigation.Location -> InternalPage app)
 
 
 {-| -}
 default : Page app Navigation.Location model msg -> Default app
 default config =
-    Default (toPageProgram config)
+  Default (internalPage config)
+
+
+
+-- API / LINKS
+
+
+{-| -}
+link : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
+link toString toMsg route attributes =
+  Html.a <| attributes ++
+    [ onClick (toMsg route)
+    , Html.Attributes.target "_blank"
+    , Html.Attributes.href (toString route)
+    ]
+
+
+{-| -}
+button : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
+button toString toMsg route attributes =
+  Html.a <| attributes ++
+    [ onClick (toMsg route)
+    , Html.Attributes.target "_blank"
+    , Html.Attributes.href (toString route)
+    ]
 
 
 
@@ -89,9 +123,9 @@ default config =
 
 
 type alias Model app =
-    { page : PageProgram app
-    , app : app
-    }
+  { page : InternalPage app
+  , app : app
+  }
 
 
 
@@ -100,12 +134,11 @@ type alias Model app =
 
 init : Config app -> app -> Navigation.Location -> ( Model app, Cmd (Msg app) )
 init config app location =
-    let
-        page =
-            find config.default config.pages app location
-    in
-    page.init
-        |> Tuple.mapFirst (Model page)
+  let
+      page =
+          find config.default config.pages location
+  in
+  Tuple.mapFirst (Model page) (page.init app)
 
 
 
@@ -113,19 +146,18 @@ init config app location =
 
 
 type Msg app
-    = ReceiveLocation Navigation.Location
-    | PageMsg (app -> ( app, Cmd (Msg app) ))
+  = ReceiveLocation Navigation.Location
+  | PageMsg (app -> ( app, Cmd (Msg app) ))
 
 
 update : Config app -> Msg app -> Model app -> ( Model app, Cmd (Msg app) )
 update config msg model =
-    case msg of
-        ReceiveLocation location ->
-            init config model.app location
+  case msg of
+    ReceiveLocation location ->
+      init config model.app location
 
-        PageMsg update ->
-            update model.app
-                |> Tuple.mapFirst (Model model.page)
+    PageMsg update ->
+      Tuple.mapFirst (Model model.page) (update model.app)
 
 
 
@@ -134,7 +166,7 @@ update config msg model =
 
 view : Config app -> Model app -> Html.Html (Msg app)
 view config model =
-    model.page.view model.app
+  model.page.view model.app
 
 
 
@@ -143,122 +175,94 @@ view config model =
 
 subscriptions : Config app -> Model app -> Sub (Msg app)
 subscriptions config model =
-    model.page.subscriptions model.app
+  model.page.subscriptions model.app
 
 
 
 -- INTERNAL / PAGE
 
 
-{-| -}
-type alias PageProgram app =
-    { init : ( app, Cmd (Msg app) )
-    , view : app -> Html.Html (Msg app)
-    , subscriptions : app -> Sub (Msg app)
-    }
+type alias InternalPage app =
+  { init : app -> ( app, Cmd (Msg app) )
+  , view : app -> Html.Html (Msg app)
+  , subscriptions : app -> Sub (Msg app)
+  }
 
 
-{-| -}
-find : Default app -> List (Route app) -> app -> Navigation.Location -> PageProgram app
-find (Default default) pages app location =
-    let
-        look (Route toPage) result =
-            case result of
-                Just found ->
-                    Just found
+find : Default app -> List (Route app) -> Navigation.Location -> InternalPage app
+find (Default default) pages location =
+  let
+    fold (Route route) final =
+      case final of
+        Just found ->
+          Just found
 
-                Nothing ->
-                    toPage app location
-    in
-    List.foldl look Nothing pages
-        |> Maybe.withDefault (default app location)
+        Nothing ->
+          route location
+  in
+  List.foldl fold Nothing pages
+      |> Maybe.withDefault (default location)
 
 
-toPageProgram : Page app args model msg -> app -> args -> PageProgram app
-toPageProgram config app args =
-    let
-        init app =
-            config.init (config.get app) args
-                |> Tuple.mapFirst (\model -> config.set model app)
-                |> Tuple.mapSecond (Cmd.map (PageMsg << anonymize))
+internalPage : Page app args model msg -> args -> InternalPage app
+internalPage config args =
+  let
+    init app =
+      config.init (config.get app) args
+        |> Tuple.mapFirst (\model -> config.set model app)
+        |> Tuple.mapSecond (Cmd.map (PageMsg << anonymize))
 
-        view app =
-            case config.get app of
-                Just model ->
-                    Html.map (PageMsg << anonymize) (config.view model)
+    view app =
+      case config.get app of
+        Just model ->
+          Html.map (PageMsg << anonymize) (config.view model)
 
-                Nothing ->
-                    Html.text "Oops, something went terrible wrong. Please refresh."
+        Nothing ->
+          Html.text "Oops, something went terrible wrong. Please refresh."
 
-        subscriptions app =
-            case config.get app of
-                Just model ->
-                    Sub.map (PageMsg << anonymize) (config.subscriptions model)
+    subscriptions app =
+      case config.get app of
+        Just model ->
+          Sub.map (PageMsg << anonymize) (config.subscriptions model)
 
-                Nothing ->
-                    Sub.none
+        Nothing ->
+          Sub.none
 
-        anonymize msg app =
-            case config.get app of
-                Just model ->
-                    config.update msg model
-                        |> Tuple.mapFirst (\model -> config.set model app)
-                        |> Tuple.mapSecond (Cmd.map (PageMsg << anonymize))
+    anonymize msg app =
+      case config.get app of
+        Just model ->
+          config.update msg model
+            |> Tuple.mapFirst (\model -> config.set model app)
+            |> Tuple.mapSecond (Cmd.map (PageMsg << anonymize))
 
-                Nothing ->
-                    ( app, Cmd.none )
-    in
-    { init = init app
-    , view = view
-    , subscriptions = subscriptions
-    }
+        Nothing ->
+          ( app, Cmd.none )
+  in
+  { init = init
+  , view = view
+  , subscriptions = subscriptions
+  }
 
 
 
--- LINKS
-
-
-{-| -}
-link : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
-link toString toMsg route attributes =
-    Html.a <|
-        attributes
-            ++ [ onClick (toMsg route)
-               , Html.Attributes.target "_blank"
-               , Html.Attributes.href (toString route)
-               ]
-
-
-{-| -}
-button : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
-button toString toMsg route attributes =
-    Html.a <|
-        attributes
-            ++ [ onClick (toMsg route)
-               , Html.Attributes.target "_blank"
-               , Html.Attributes.href (toString route)
-               ]
+-- INTERNAL / LINKS
 
 
 onClick : msg -> Html.Attribute msg
 onClick msg =
-    let
-        isSpecialClick =
-            Json.Decode.map2
-                (\isCtrl isMeta -> isCtrl || isMeta)
-                (Json.Decode.field "ctrlKey" Json.Decode.bool)
-                (Json.Decode.field "metaKey" Json.Decode.bool)
+  let
+    isSpecialClick =
+      Json.Decode.map2 (\isCtrl isMeta -> isCtrl || isMeta)
+        (Json.Decode.field "ctrlKey" Json.Decode.bool)
+        (Json.Decode.field "metaKey" Json.Decode.bool)
 
-        succeedIfNotSpecial msg preventDefault =
-            case preventDefault of
-                False ->
-                    Json.Decode.succeed msg
+    succeedIfNotSpecial msg preventDefault =
+      if preventDefault then
+        Json.Decode.fail "Click was a special click"
+      else
+        Json.Decode.succeed msg
 
-                True ->
-                    Json.Decode.fail "Click was a special click"
-    in
-    Html.Events.onWithOptions "click"
-        { stopPropagation = False
-        , preventDefault = True
-        }
-        (Json.Decode.andThen (succeedIfNotSpecial msg) isSpecialClick)
+    decoder =
+      Json.Decode.andThen (succeedIfNotSpecial msg) isSpecialClick
+  in
+  Html.Events.onWithOptions "click" { stopPropagation = False, preventDefault = True } decoder
