@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Dict
 import Navigation
 import Page.Home as Home
 import Page.NotFound as NotFound
@@ -12,32 +13,32 @@ import UrlParser as P exposing ((</>))
 -- TODO: redirects
 
 
-main : Spa.Program App
+main : Spa.Application App
 main =
-  Spa.program
-    { init = init
-    , default = Spa.default NotFound.page
-    , pages =
+    Spa.application init
         [ Spa.route Profile.page profile
         , Spa.route Home.page home
         ]
-    }
+        NotFound.page
 
 
-profile : List (P.Parser (Profile.Args -> a) a)
+profile : P.Parser (Profile.Args -> a) a
 profile =
-  List.map (P.map Profile.Args)
-    [ P.s "profile" </> P.int </> P.map Route.Progress P.top
-    , P.s "profile" </> P.int </> P.map Route.Progress (P.s "progress")
-    , P.s "profile" </> P.int </> P.map Route.Submissions (P.s "submissions")
-    ]
+    P.map Profile.Args <|
+        P.oneOf
+            [ P.s "profile" </> P.int </> P.map Route.Progress P.top
+            , P.s "profile" </> P.int </> P.map Route.Progress (P.s "progress")
+            , P.s "profile" </> P.int </> P.map Route.Submissions (P.s "submissions")
+            ]
 
 
-home : List (P.Parser (() -> a) a)
+home : P.Parser (() -> a) a
 home =
-  [ P.map () (P.s "home")
-  , P.map () P.top
-  ]
+    P.map () <|
+        P.oneOf
+            [ P.s "home"
+            , P.top
+            ]
 
 
 
@@ -45,15 +46,15 @@ home =
 
 
 type alias App =
-  { home : Maybe Home.Model
-  , profile : Maybe Profile.Model
-  , notFound : Maybe NotFound.Model
-  }
+    { home : Maybe Home.Model
+    , profiles : Dict.Dict Int Profile.Model
+    , notFound : Maybe NotFound.Model
+    }
 
 
 init : App
 init =
-  { home = Nothing
-  , profile = Nothing
-  , notFound = Nothing
-  }
+    { home = Nothing
+    , profiles = Dict.empty
+    , notFound = Nothing
+    }
