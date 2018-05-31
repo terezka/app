@@ -5,7 +5,7 @@ This is a simple frame for creating a single page apps in Elm.
 ## Installation
 
 ```bash
-elm package install terezka/app
+$ elm package install terezka/app
 ```
 
 
