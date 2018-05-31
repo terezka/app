@@ -2,6 +2,17 @@
 
 This is a simple frame for creating a single page app in Elm.
 
+## Installation
+
+```bash
+elm package install terezka/app
+```
+
+
+## Example main
+
+Look in `/examples` for elaboration.
+
 ```elm
 
 import App
