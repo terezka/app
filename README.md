@@ -1,4 +1,4 @@
-# Application Program
+# Single Page App Program
 
 This is a simple frame for creating a single page app in Elm.
 
