@@ -1,27 +1,10 @@
-module Page.NotFound exposing (Model, page)
+module Page.NotFound exposing (Model, Msg, init, update, view)
 
+import App
 import Html
 import Html.Events
 import Navigation
 import Route
-import Spa
-
-
--- PAGE
-
-
-{-| -}
-page : Spa.Page Navigation.Location { app | notFound : Maybe Model }
-page =
-    Spa.page
-        { load = \_ -> .notFound
-        , save = \_ notFound app -> { app | notFound = Just notFound }
-        , init = init
-        , update = update
-        , view = view
-        , subscriptions = always Sub.none
-        }
-
 
 
 -- MODEL
@@ -36,8 +19,9 @@ type alias Model =
 -- INIT
 
 
-init : Maybe Model -> Navigation.Location -> ( Model, Cmd Msg )
-init _ _ =
+init : Maybe Model -> ( Model, Cmd Msg )
+init _ =
+    -- TODO Navigation.Location ->
     ( ()
     , Cmd.none
     )

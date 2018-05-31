@@ -1,5 +1,6 @@
-module Page.Profile exposing (Args, Model, page)
+module Page.Profile exposing (Model, Msg, init, update, view)
 
+import App
 import Data.Status as Status
 import Data.User as User
 import Dict
@@ -9,31 +10,7 @@ import Html.Events
 import Http
 import Navigation
 import Route
-import Spa
 import UrlParser as P exposing ((</>))
-
-
--- PAGE
-
-
-{-| -}
-page : Spa.Page Args { app | profiles : Dict.Dict Int Model }
-page =
-    Spa.page
-        { load = \{ id } app -> Dict.get id app.profiles
-        , save = \{ id } profile app -> { app | profiles = Dict.insert id profile app.profiles }
-        , init = init
-        , update = update
-        , view = view
-        , subscriptions = always Sub.none
-        }
-
-
-type alias Args =
-    { id : Int
-    , tab : Route.Tab
-    }
-
 
 
 -- MODEL
@@ -41,7 +18,8 @@ type alias Args =
 
 {-| -}
 type alias Model =
-    { user : Status.Status Http.Error User.User
+    { id : User.Id
+    , user : Status.Status Http.Error User.User
     , tab : Route.Tab
     }
 
@@ -50,15 +28,15 @@ type alias Model =
 -- INIT
 
 
-init : Maybe Model -> Args -> ( Model, Cmd Msg )
-init cached args =
+init : Maybe Model -> User.Id -> Route.Tab -> ( Model, Cmd Msg )
+init cached id tab =
     case cached of
         Just model ->
             ( model, Cmd.none )
 
         Nothing ->
-            ( { user = Status.loading, tab = args.tab }
-            , Http.send ReceiveUser (User.request args.id)
+            ( { id = id, user = Status.loading, tab = tab }
+            , Http.send ReceiveUser (User.request id)
             )
 
 

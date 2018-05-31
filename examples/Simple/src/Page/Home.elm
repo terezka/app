@@ -1,5 +1,6 @@
-module Page.Home exposing (Model, page)
+module Page.Home exposing (Model, Msg, init, update, view)
 
+import App
 import Data.Post as Post
 import Data.Status as Status
 import Html
@@ -8,24 +9,6 @@ import Html.Events
 import Http
 import Navigation
 import Route
-import Spa
-
-
--- PAGE
-
-
-{-| -}
-page : Spa.Page () { app | home : Maybe Model }
-page =
-    Spa.page
-        { load = \_ -> .home
-        , save = \_ home app -> { app | home = Just home }
-        , init = init
-        , update = update
-        , view = view
-        , subscriptions = always Sub.none
-        }
-
 
 
 -- MODEL
@@ -41,8 +24,8 @@ type alias Model =
 -- INIT
 
 
-init : Maybe Model -> () -> ( Model, Cmd Msg )
-init cached _ =
+init : Maybe Model -> ( Model, Cmd Msg )
+init cached =
     case cached of
         Just model ->
             ( model, Cmd.none )
