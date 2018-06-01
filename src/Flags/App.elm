@@ -35,7 +35,7 @@ then decode for real however you like.
 
 -}
 type alias Config flags app route page msg =
-    { init : flags -> app
+    { init : flags -> ( app, Cmd msg )
     , decoder : Json.Decoder flags
     , broken : String -> ( page, Cmd msg )
     , parser : Parser (route -> route) route
@@ -79,7 +79,12 @@ init : Config flags app route page msg -> Json.Value -> Location -> ( Model rout
 init config json location =
     case Json.decodeValue config.decoder json of
         Ok flags ->
-            reinit config (config.init flags) (Parser.parsePath config.parser location) location
+            let
+                ( app, appCmd ) =
+                    config.init flags
+            in
+            reinit config app (Parser.parsePath config.parser location) location
+                |> Tuple.mapSecond (\cmd -> Cmd.batch [ Cmd.map PageMsg appCmd, cmd ])
 
         Err err ->
             config.broken err

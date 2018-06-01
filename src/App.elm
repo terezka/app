@@ -37,7 +37,7 @@ can then be used to reinitialize your page when re-visiting it.
 
   - init: The initial state of all your data and pages.
   - parser: The parser for your routes.
-  - composer: Turns your route into a url again.
+  - composer: Turn your route into a URL pathname again.
   - load: Get the past model of your page, if any, and initialize a page.
   - save: Save the model once you're leaving the page.
   - update: Update your current page.
@@ -45,7 +45,7 @@ can then be used to reinitialize your page when re-visiting it.
 
 -}
 type alias Config app route page msg =
-    { init : app
+    { init : ( app, Cmd msg )
     , parser : Parser (route -> route) route
     , composer : route -> String
     , load : Result Location route -> app -> ( page, Cmd msg )
@@ -83,9 +83,10 @@ type alias Model route app page =
 -- APPLICATION / INTERNAL / INIT
 
 
-init : Config app route page msg -> app -> Location -> ( Model route app page, Cmd (Msg route msg) )
-init config app location =
+init : Config app route page msg -> ( app, Cmd msg ) -> Location -> ( Model route app page, Cmd (Msg route msg) )
+init config ( app, appCmd ) location =
     reinit config app (Parser.parsePath config.parser location) location
+        |> Tuple.mapSecond (\cmd -> Cmd.batch [ Cmd.map PageMsg appCmd, cmd ])
 
 
 reinit : Config app route page msg -> app -> Maybe route -> Location -> ( Model route app page, Cmd (Msg route msg) )

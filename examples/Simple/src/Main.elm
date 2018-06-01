@@ -37,12 +37,14 @@ type Page
     | NotFound NotFound.Model
 
 
-init : App
+init : ( App, Cmd Msg )
 init =
-    { home = Nothing
-    , profiles = Dict.empty
-    , notFound = Nothing
-    }
+    ( { home = Nothing
+      , profiles = Dict.empty
+      , notFound = Nothing
+      }
+    , Cmd.none
+    )
 
 
 load : Result Navigation.Location Route.Route -> App -> ( Page, Cmd Msg )

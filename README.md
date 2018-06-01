@@ -29,7 +29,8 @@ main : App.Application App Page Msg
 main =
     App.application
         { init = init
-        , parser = parser
+        , parser = Route.parser
+        , composer = Route.composer
         , load = load
         , save = save
         , update = update
@@ -69,21 +70,6 @@ init =
     , profiles = Dict.empty
     , notFound = Nothing
     }
-
-
-
--- ROUTE PARSER
-
-
-parser : P.Parser (Route.Route -> Route.Route) Route.Route
-parser =
-    P.oneOf
-        [ P.map Route.Profile (P.s "profile" </> P.int </> P.map Route.Progress P.top)
-        , P.map Route.Profile (P.s "profile" </> P.int </> P.map Route.Progress (P.s "progress"))
-        , P.map Route.Profile (P.s "profile" </> P.int </> P.map Route.Submissions (P.s "submissions"))
-        , P.map Route.Home (P.s "home")
-        , P.map Route.Home P.top
-        ]
 
 
 

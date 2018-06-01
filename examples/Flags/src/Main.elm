@@ -52,13 +52,15 @@ decoder =
         |> Json.map Flags
 
 
-init : Flags -> App
+init : Flags -> ( App, Cmd Msg )
 init flags =
-    { hasFlags = flags.hasFlags
-    , home = Nothing
-    , profiles = Dict.empty
-    , notFound = Nothing
-    }
+    ( { hasFlags = flags.hasFlags
+      , home = Nothing
+      , profiles = Dict.empty
+      , notFound = Nothing
+      }
+    , Cmd.none
+    )
 
 
 load : Result Navigation.Location Route.Route -> App -> ( Page, Cmd Msg )
