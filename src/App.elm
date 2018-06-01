@@ -37,6 +37,7 @@ can then be used to reinitialize your page when re-visiting it.
 
   - init: The initial state of all your data and pages.
   - parser: The parser for your routes.
+  - composer: Turns your route into a url again.
   - load: Get the past model of your page, if any, and initialize a page.
   - save: Save the model once you're leaving the page.
   - update: Update your current page.
