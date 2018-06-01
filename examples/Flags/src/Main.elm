@@ -1,8 +1,9 @@
 module Main exposing (main)
 
-import App
 import Dict
+import Flags.App as App
 import Html
+import Json.Decode as Json
 import Navigation
 import Page.Home as Home
 import Page.NotFound as NotFound
@@ -14,6 +15,8 @@ main : App.Application App Route.Route Page Msg
 main =
     App.application
         { init = init
+        , decoder = decoder
+        , broken = \err -> ( Broken err, Cmd.none )
         , composer = Route.composer
         , parser = Route.parser
         , load = load
@@ -25,7 +28,8 @@ main =
 
 
 type alias App =
-    { home : Maybe Home.Model
+    { hasFlags : Bool
+    , home : Maybe Home.Model
     , profiles : Dict.Dict Int Profile.Model
     , notFound : Maybe NotFound.Model
     }
@@ -35,11 +39,23 @@ type Page
     = Profile Profile.Model
     | Home Home.Model
     | NotFound NotFound.Model
+    | Broken String
 
 
-init : App
-init =
-    { home = Nothing
+type alias Flags =
+    { hasFlags : Bool }
+
+
+decoder : Json.Decoder Flags
+decoder =
+    Json.field "has_flags" Json.bool
+        |> Json.map Flags
+
+
+init : Flags -> App
+init flags =
+    { hasFlags = flags.hasFlags
+    , home = Nothing
     , profiles = Dict.empty
     , notFound = Nothing
     }
@@ -75,6 +91,9 @@ save page app =
 
         NotFound model ->
             { app | notFound = Just model }
+
+        Broken _ ->
+            app
 
 
 type Msg
@@ -116,3 +135,6 @@ view page =
 
         NotFound model ->
             Html.map NotFoundMsg (NotFound.view model)
+
+        Broken err ->
+            Html.text err

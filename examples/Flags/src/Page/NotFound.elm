@@ -1,6 +1,5 @@
 module Page.NotFound exposing (Model, Msg, init, update, view)
 
-import App
 import Html
 import Html.Events
 import Navigation

@@ -47,7 +47,7 @@ type alias Config app route page msg =
     { init : app
     , parser : Parser (route -> route) route
     , composer : route -> String
-    , load : Maybe route -> app -> ( page, Cmd msg )
+    , load : Result Location route -> app -> ( page, Cmd msg )
     , save : page -> app -> app
     , update : msg -> page -> ( page, Cmd msg )
     , view : page -> Html msg
@@ -104,8 +104,13 @@ reinit config app route location =
                 Cmd.none
             else
                 Navigation.modifyUrl rewritten
+
+        routeResult =
+            route
+                |> Maybe.map Ok
+                |> Maybe.withDefault (Err location)
     in
-    config.load route app
+    config.load routeResult app
         |> Tuple.mapFirst (Model route app)
         |> Tuple.mapSecond (\cmd -> Cmd.batch [ Cmd.map PageMsg cmd, redirectCmd ])
 
