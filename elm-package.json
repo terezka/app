@@ -1,5 +1,5 @@
 {
-    "version": "2.0.0",
+    "version": "2.1.0",
     "summary": "A single page app frame.",
     "repository": "https://github.com/terezka/app.git",
     "license": "BSD3",
@@ -7,7 +7,8 @@
         "./src"
     ],
     "exposed-modules": [
-        "App"
+        "App",
+        "Flags.App"
     ],
     "dependencies": {
         "elm-lang/core": "5.1.1 <= v < 6.0.0",
