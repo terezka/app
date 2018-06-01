@@ -25,9 +25,9 @@ type alias Application app route page msg =
 
 {-| Almost identitcal to `App.Config`, except for some important differences:
 
-    - `init` takes flags.
-    - `decoder` decodes your flags
-    - `broken` gives you the decoding error and returns a page.
+  - `init` takes flags.
+  - `decoder` decodes your flags
+  - `broken` gives you the decoding error and returns a page.
 
 Note: Want to handle decoding errors your own way? Just set `decoder`
 to `Json.succeed` and have your `init` take a `Json.Value` which you can

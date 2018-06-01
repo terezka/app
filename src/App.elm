@@ -35,12 +35,12 @@ contain data which is shared across all pages, as well as past
 model of each page if you wish to keep them. These past models
 can then be used to reinitialize your page when re-visiting it.
 
-    - init: The initial state of all your data and pages.
-    - parser: The parser for your routes.
-    - load: Get the past model of your page, if any, and initialize a page.
-    - save: Save the model once you're leaving the page.
-    - update: Update your current page.
-    - view: View your current page.
+  - init: The initial state of all your data and pages.
+  - parser: The parser for your routes.
+  - load: Get the past model of your page, if any, and initialize a page.
+  - save: Save the model once you're leaving the page.
+  - update: Update your current page.
+  - view: View your current page.
 
 -}
 type alias Config app route page msg =
