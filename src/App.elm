@@ -1,14 +1,45 @@
-module App exposing (Application, Config, application, button, link)
+module App exposing (Application, Page, Route, application, button, link, page, pageWithFlags, route)
 
 {-|
 
 
-# Create an app
+### List of content
 
-@docs Config, Application, application
+  - Definitions
+  - Create an [application](#Application)
+  - Create a [route](#Route)
+  - Create a [page](#Page)
+      - [Link helpers](#link)
 
 
-# Link helpers
+# Definitions
+
+  - Application: An application is a "single page app", where single actually
+    means multiple. It's confusing, so now it's all just called an application.
+  - Session: A session is a structure of data which is shared amongst your pages.
+  - Route: A route is a URL rendering to a particular page.
+  - Page: A page is full elm life cycle, meaning the bundeling of
+    a model, view, update, subscriptions, and if you have flags, a decoder,
+    as well as a few functions to describe how the page fits in with the
+    rest of your application. See [Page](#Page) for more info.
+
+
+# Application
+
+@docs Application, application
+
+
+## Route
+
+@docs Route, route
+
+
+## Page
+
+@docs Page, page, pageWithFlags
+
+
+### Link helpers
 
 @docs link, button
 
@@ -26,56 +57,107 @@ import UrlParser as Parser exposing (Parser)
 
 
 {-| -}
-type alias Application app route page msg =
-    Platform.Program Never (Model route app page) (Msg route msg)
+type alias Application session app =
+    Platform.Program Json.Value (Model session app) (Msg session app)
 
 
-{-| The configuration. In this world, your model will
-contain data which is shared across all pages, as well as past
-model of each page if you wish to keep them. These past models
-can then be used to reinitialize your page when re-visiting it.
-
-  - init: The initial state of all your data and pages.
-  - parser: The parser for your routes.
-  - composer: Turn your route into a URL pathname again.
-  - load: Get the past model of your page, if any, and initialize a page.
-  - save: Save the model once you're leaving the page.
-  - update: Update your current page.
-  - view: View your current page.
-
+{-| Create an application. Pass your
 -}
-type alias Config app route page msg =
-    { init : ( app, Cmd msg )
-    , parser : Parser (route -> route) route
-    , composer : route -> String
-    , load : Result Location route -> app -> ( page, Cmd msg )
-    , save : page -> app -> app
-    , update : msg -> page -> ( page, Cmd msg )
-    , view : page -> Html msg
-    , subscriptions : page -> Sub msg
-    }
-
-
-{-| Create a single page app.
--}
-application : Config app route page msg -> Application app route page msg
-application config =
-    Navigation.program ReceiveLocation
-        { init = init config config.init
-        , view = view config
-        , update = update config
-        , subscriptions = subscriptions config
+application : session -> app -> List (Route session app) -> Page Location session app -> Application session app
+application session init routes fallback =
+    Navigation.programWithFlags ReceiveLocation
+        { init = appInit fallback routes session init
+        , view = appView
+        , update = appUpdate fallback routes
+        , subscriptions = appSubscriptions
         }
+
+
+{-| -}
+type Page args session app
+    = Page (Json.Value -> args -> AnonymousPage session app)
+
+
+{-| -}
+pageWithFlags :
+    { decoder : Json.Decoder flags
+    , init : flags -> session -> Maybe model -> args -> ( model, Cmd msg )
+    , update : msg -> model -> ( model, Cmd msg )
+    , view : model -> Html.Html msg
+    , subscriptions : model -> Sub msg
+    , session : model -> session -> session
+    , save : args -> model -> app -> app
+    , load : args -> app -> Maybe model
+    , fallback : Page String session app
+    }
+    -> Page args session app
+pageWithFlags config =
+    Page <|
+        \json args ->
+            case Json.decodeValue config.decoder json of
+                Ok flags ->
+                    toAnonymousPage
+                        { init = config.init flags
+                        , update = config.update
+                        , view = config.view
+                        , subscriptions = config.subscriptions
+                        , session = config.session
+                        , save = config.save
+                        , load = config.load
+                        }
+                        args
+
+                Err err ->
+                    let
+                        (Page fallback) =
+                            config.fallback
+                    in
+                    fallback json err
+
+
+{-| -}
+page :
+    { init : session -> Maybe model -> args -> ( model, Cmd msg )
+    , update : msg -> model -> ( model, Cmd msg )
+    , view : model -> Html.Html msg
+    , subscriptions : model -> Sub msg
+    , session : model -> session -> session
+    , save : args -> model -> app -> app
+    , load : args -> app -> Maybe model
+    }
+    -> Page args session app
+page config =
+    Page <|
+        \_ args -> toAnonymousPage config args
+
+
+{-| -}
+type Route session app
+    = Route (Json.Value -> Location -> Maybe (AnonymousPage session app))
+
+
+{-| -}
+route : Page args session app -> Parser (args -> args) args -> Route session app
+route (Page toPage) parser =
+    Route <|
+        \json url ->
+            case Parser.parsePath parser url of
+                Just args ->
+                    Just (toPage json args)
+
+                Nothing ->
+                    Nothing
 
 
 
 -- APPLICATION / INTERNAL / MODEL
 
 
-type alias Model route app page =
-    { route : Maybe route
+type alias Model session app =
+    { flags : Json.Value
+    , session : session
+    , page : AnonymousPage session app
     , app : app
-    , page : page
     }
 
 
@@ -83,101 +165,149 @@ type alias Model route app page =
 -- APPLICATION / INTERNAL / INIT
 
 
-init : Config app route page msg -> ( app, Cmd msg ) -> Location -> ( Model route app page, Cmd (Msg route msg) )
-init config ( app, appCmd ) location =
-    reinit config app (Parser.parsePath config.parser location) location
-        |> Tuple.mapSecond (\cmd -> Cmd.batch [ Cmd.map PageMsg appCmd, cmd ])
-
-
-reinit : Config app route page msg -> app -> Maybe route -> Location -> ( Model route app page, Cmd (Msg route msg) )
-reinit config app route location =
+appInit : Page Location session app -> List (Route session app) -> session -> app -> Json.Value -> Location -> ( Model session app, Cmd (Msg session app) )
+appInit fallback routes session app json location =
     let
-        redirectCmd =
-            route
-                |> Maybe.map checkForRedirect
-                |> Maybe.withDefault Cmd.none
-
-        checkForRedirect route_ =
-            let
-                rewritten =
-                    config.composer route_
-            in
-            if rewritten == location.pathname then
-                Cmd.none
-            else
-                Navigation.modifyUrl rewritten
-
-        routeResult =
-            route
-                |> Maybe.map Ok
-                |> Maybe.withDefault (Err location)
+        page_ =
+            findPageForRoute fallback routes json location
     in
-    config.load routeResult app
-        |> Tuple.mapFirst (Model route app)
-        |> Tuple.mapSecond (\cmd -> Cmd.batch [ Cmd.map PageMsg cmd, redirectCmd ])
+    Tuple.mapFirst (Model json session page_) (page_.init session app)
 
 
 
 -- APPLICATION / INTERNAL / UPDATE
 
 
-type Msg route msg
+type Msg session app
     = ReceiveLocation Location
-    | PageMsg msg
+    | PageMsg (Model session app -> ( Model session app, Cmd (Msg session app) ))
 
 
-update : Config app route page msg -> Msg route msg -> Model route app page -> ( Model route app page, Cmd (Msg route msg) )
-update config msg model =
+appUpdate : Page Location session app -> List (Route session app) -> Msg session app -> Model session app -> ( Model session app, Cmd (Msg session app) )
+appUpdate fallback routes msg model =
     case msg of
         ReceiveLocation location ->
-            let
-                route =
-                    Parser.parsePath config.parser location
-            in
-            if route == model.route then
-                ( model, Cmd.none )
-            else
-                reinit config (config.save model.page model.app) route location
+            appInit fallback routes model.session model.app model.flags location
 
-        PageMsg msg ->
-            config.update msg model.page
-                |> Tuple.mapFirst (Model model.route model.app)
-                |> Tuple.mapSecond (Cmd.map PageMsg)
+        PageMsg updatePage ->
+            updatePage model
 
 
 
 -- APPLICATION / INTERNAL / VIEW
 
 
-view : Config app route page msg -> Model route app page -> Html.Html (Msg route msg)
-view config model =
-    config.view model.page
-        |> Html.map PageMsg
+appView : Model session app -> Html.Html (Msg session app)
+appView model =
+    model.page.view model.app
 
 
 
 -- APPLICATION / INTERNAL / SUBS
 
 
-subscriptions : Config app route page msg -> Model route app page -> Sub (Msg route msg)
-subscriptions config model =
-    config.subscriptions model.page
-        |> Sub.map PageMsg
+appSubscriptions : Model session app -> Sub (Msg session app)
+appSubscriptions model =
+    model.page.subscriptions model.app
+
+
+
+-- APPLICATION / INTERNAL / PAGE
+
+
+type alias AnonymousPage session app =
+    { init : session -> app -> ( app, Cmd (Msg session app) )
+    , view : app -> Html.Html (Msg session app)
+    , subscriptions : app -> Sub (Msg session app)
+    }
+
+
+toAnonymousPage :
+    { init : session -> Maybe model -> args -> ( model, Cmd msg )
+    , update : msg -> model -> ( model, Cmd msg )
+    , view : model -> Html.Html msg
+    , subscriptions : model -> Sub msg
+    , session : model -> session -> session
+    , save : args -> model -> app -> app
+    , load : args -> app -> Maybe model
+    }
+    -> args
+    -> AnonymousPage session app
+toAnonymousPage config args =
+    let
+        init_ : session -> app -> ( app, Cmd (Msg session app) )
+        init_ session app =
+            config.init session (config.load args app) args
+                |> Tuple.mapFirst (\model -> config.save args model app)
+                |> Tuple.mapSecond (Cmd.map anonymizeMsg)
+
+        view_ : app -> Html.Html (Msg session app)
+        view_ app =
+            case config.load args app of
+                Just model ->
+                    Html.map anonymizeMsg (config.view model)
+
+                Nothing ->
+                    Html.text ""
+
+        subscriptions_ : app -> Sub (Msg session app)
+        subscriptions_ app =
+            case config.load args app of
+                Just model ->
+                    Sub.map anonymizeMsg (config.subscriptions model)
+
+                Nothing ->
+                    Sub.none
+
+        anonymizeMsg : msg -> Msg session app
+        anonymizeMsg msg =
+            PageMsg <|
+                \inner ->
+                    case config.load args inner.app of
+                        Just model ->
+                            let
+                                ( model_, cmd ) =
+                                    config.update msg model
+                            in
+                            ( { inner
+                                | app = config.save args model_ inner.app
+                                , session = config.session model_ inner.session
+                              }
+                            , Cmd.map anonymizeMsg cmd
+                            )
+
+                        Nothing ->
+                            ( inner, Cmd.none )
+    in
+    AnonymousPage init_ view_ subscriptions_
+
+
+findPageForRoute : Page Location session app -> List (Route session app) -> Json.Value -> Location -> AnonymousPage session app
+findPageForRoute (Page fallback) routes json url =
+    let
+        search (Route toPage) result =
+            case result of
+                Just done ->
+                    Just done
+
+                Nothing ->
+                    toPage json url
+    in
+    List.foldl search Nothing routes
+        |> Maybe.withDefault (fallback json url)
 
 
 
 -- APPLICATION / LINKS
 
 
-{-| A link which prevents default.
--}
+{-| -}
 link : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
 link toString toMsg nextRoute attributes =
     Html.a (linkAttributes toString toMsg nextRoute attributes)
 
 
-{-| A button link which prevents default.
--}
+{-| -}
 button : (route -> String) -> (route -> msg) -> route -> List (Html.Attribute msg) -> List (Html.Html msg) -> Html.Html msg
 button toString toMsg nextRoute attributes =
     Html.button (linkAttributes toString toMsg nextRoute attributes)
@@ -195,7 +325,6 @@ linkAttributes toString onSuccess nextRoute attributes =
 onClick : msg -> Html.Attribute msg
 onClick successMsg =
     let
-        -- TODO what is this all about
         isCtrlOrMeta =
             Json.map2 (\isCtrl isMeta -> isCtrl || isMeta)
                 (Json.field "ctrlKey" Json.bool)
@@ -210,4 +339,4 @@ onClick successMsg =
         decoder =
             Json.andThen finish isCtrlOrMeta
     in
-    Html.Events.onWithOptions "click" { stopPropagation = False, preventDefault = True } decoder
+    Html.Events.onWithOptions "click" { preventDefault = True, stopPropagation = False } decoder
